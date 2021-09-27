@@ -1,0 +1,33 @@
+{
+    "creators": [
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Abdulameer Jasim Al-Agele, Hadi"
+        },
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Ngueyn, Bao"
+        },
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Singh, Gurpreet"
+        },
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Zimmermann, Liam"
+        }
+
+    ],
+    "description": "Micro-aggregating autosmapler",
+    "keywords": [
+        "Auto-sampler"
+        "composite-sampler"
+        "epidemiology"
+        "low-cost design"
+		"wastewater"
+    ],
+    "license": {
+        "id": "gpl-3.0"
+    },
+    "title": "Micro-aggregating autosmapler"
+}

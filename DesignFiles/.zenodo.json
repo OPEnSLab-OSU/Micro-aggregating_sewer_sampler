@@ -1,0 +1,36 @@
+{
+    "creators": [
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Abdulameer Jasim Al-Agele, Hadi"
+        },
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Ngueyn, Bao"
+        },
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Singh, Gurpreet"
+        },
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Zimmermann, Liam"
+        },
+        {
+            "affiliation": "OPEnS Lab - OSU",
+            "name": "Quintin Kurisaka Roy, Kai"
+        }
+
+    ],
+    "description": "COVID Sewer Sampler",
+    "keywords": [
+        "Corona Virus",
+        "Sampler",
+        "Sewer",
+        "3D Print"
+    ],
+    "license": {
+        "id": "gpl-3.0"
+    },
+    "title": "SingleSampler"
+}
