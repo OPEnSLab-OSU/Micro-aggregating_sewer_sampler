@@ -1,7 +1,6 @@
 #pragma once
 #include <KPFoundation.hpp>
 #include <ADS1232.h>
-//#include <FileIO/SerialSD.hpp>
 #include <time.h>
 #include <Application/Constants.hpp>
 #include <FileIO/CSVWriter.hpp>
@@ -17,9 +16,8 @@ public:
 	CSVWriter csvw{"data.csv"};
 	ADS1232 weight = ADS1232(_pdwn, _sclk, _dout);
 	float tare;
-	float factor = 0.002192;//0.002348 sampler1; 0.002192 sampler2
-
-	float offset = -18344.85;// -19857.150 sampler1; -18344.85 sampler2
+	float factor = 0.002348;//0.002348 sampler1; 0.002192 sampler2
+	float offset = -19857.150;// -19857.150 sampler1; -18344.85 sampler2
 	long reading = 0;
 	long sum;
 	short count;
@@ -56,8 +54,6 @@ public:
 					if (i>3){
 						sum += reading;
 						count ++;
-						//print("tally of readings to average: ");
-						//println(count);
 					}
 				}
 				//if there aren't more than 5 readings, just use all of them
@@ -73,7 +69,6 @@ public:
 
 	float getLoad(int qty) {
 		// gets factor and offset from this file during setup, gets factor and offset from SD after
-		//println("in getLoad");
 		return factor * read(qty) + offset;
 	}
 
@@ -88,7 +83,6 @@ public:
 	}
 
 	float reTare(int qty) {
-		//println("in reTare");
 		tare = getLoad(qty);
 		return tare;
 	}
@@ -102,7 +96,6 @@ public:
 	}
 
 	float readGrams() {
-		//println("in readGrams");
 		return factor * (long)weight.raw_read(1) + offset;
 	}
 };

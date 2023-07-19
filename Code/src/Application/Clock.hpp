@@ -14,7 +14,6 @@ public:
 	DS3232RTC rtc;
 	Clock(const char * name) : KPComponent(name), rtc(false) {}
 	void setup() {
-		//waitForConnection();
 		rtc.begin();
 		rtc.squareWave(SQWAVE_NONE);
 		setTime(rtc.get());
@@ -34,21 +33,5 @@ public:
 
 	time_t getTime() {
 		return now();
-	}
-
-	// don't need
-	void waitForConnection() {
-		Wire.begin();
-		for (;; delay(5000)) {
-			Wire.requestFrom(RTC_ADDR, 1, false);
-			if (Wire.read() == -1) {
-				Serial.println("RTC not connected.");
-			} else {
-				Serial.println("RTC connected");
-				break;
-			}
-		}
-
-		Wire.end();
 	}
 };
