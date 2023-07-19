@@ -160,11 +160,6 @@ void Shell::setup() {
 		cmnd_lambda { Serial.println(app.load_cell.getTaredLoad(stoi(args[1]))); });
 
 	addFunction(
-		"volt_load",
-		0,
-		cmnd_lambda { Serial.println(app.load_cell.getVoltage()); });
-
-	addFunction(
 		"sample_no_runs",
 		1,
 		cmnd_lambda {
@@ -213,19 +208,6 @@ void Shell::setup() {
 		});
 
 	addFunction(
-		"sample_between_time",
-		1,
-		cmnd_lambda {
-			const char * loc[2] = {"sample", "idle_time"};
-			app.reWrite(loc,
-				app.sm.getState<SampleStateIdle>(SampleStateNames::IDLE).time,
-				std::stoi(args[1])
-					- app.sm.getState<SampleStateOnramp>(SampleStateNames::ONRAMP).time
-					- app.sm.getState<SampleStateFlush>(SampleStateNames::FLUSH).time
-					- app.sm.getState<SampleStateSample>(SampleStateNames::SAMPLE).time);
-		});
-
-	addFunction(
 		"sample_setup_time",
 		1,
 		cmnd_lambda {
@@ -266,24 +248,6 @@ void Shell::setup() {
 		});
 
 	addFunction(
-		"sample_setup_tod_enabled",
-		1,
-		cmnd_lambda {
-			const char * loc[2] = {"sample", "setup_tod_enabled"};
-			app.reWrite(loc,
-				app.sm.getState<SampleStateSetup>(SampleStateNames::SETUP).tod_enabled,
-				std::stoi(args[1]));
-		});
-	addFunction(
-		"sample_setup_tod",
-		1,
-		cmnd_lambda {
-			const char * loc[2] = {"sample", "setup_tod"};
-			app.reWrite(loc,
-				app.sm.getState<SampleStateSetup>(SampleStateNames::SETUP).tod,
-				std::stoi(args[1]));
-		});
-	addFunction(
 		"min_pressure",
 		1,
 		cmnd_lambda {
@@ -300,24 +264,6 @@ void Shell::setup() {
 		});
 
 	addFunction(
-		"led_set",
-		1,
-		cmnd_lambda { app.led.setLight(args[1].c_str()); });
-	addFunction(
-		"led_clear",
-		0,
-		cmnd_lambda { app.led.strip(); });
-
-	addFunction(
-		"file_read",
-		1,
-		cmnd_lambda {
-			File file = SD.open(args[1].c_str());
-			Serial.println(Utility::readEntireFile(file).c_str());
-			file.close();
-		});
-
-	addFunction(
 		"get_temperature",
 		0,
 		cmnd_lambda { Serial.println(app.pressure_sensor.getTemp()); });
@@ -331,15 +277,6 @@ void Shell::setup() {
 			app.shift.write();										   // write shifts wide*/
 		});
 
-	addFunction(
-		"pin_manip",
-		2,
-		cmnd_lambda { digitalWrite(stoi(args[1]), stoi(args[2])); });
-
-	addFunction(
-		"led_manip",
-		3,
-		cmnd_lambda { app.led.setColor(stoi(args[1]), stoi(args[2]), stoi(args[3])); });
 	addFunction(
 		"pump_on",
 		0,
@@ -367,22 +304,9 @@ void Shell::setup() {
 		});
 
 	addFunction(
-		"load_cell_offset_auto",
-		1,
-		cmnd_lambda {
-			const char * loc[2] = {"load_cell", "offset"};
-			app.reWrite(loc, app.load_cell.offset, app.load_cell.getLoad(stoi(args[1])));
-		});
-
-	addFunction(
 		"tare_load",
 		1,
 		cmnd_lambda { app.load_cell.reTare(stoi(args[1])); });
-
-	addFunction(
-		"file_reset",
-		1,
-		cmnd_lambda { SD.remove(args[1].c_str()); });
 
 	addFunction(
 		"load_spam",
