@@ -5,6 +5,8 @@
 #include <SD.h>
 #include <ArduinoJson.h>
 #include <time.h>
+#include <sstream>
+#include <String>
 //#include <FileIO/SerialSD.hpp>
 #define cmnd_lambda [](Application & app, const std::string * args)
 #define CALL		(app, args)
@@ -131,13 +133,16 @@ void Shell::setup() {
 			}
 		});
 	
-	//isn't working - displays 1d
+	//unix epoch time - seconds since January 1, 1970
 	addFunction(
 		"get_time",
 		0,
 		cmnd_lambda {
-			std::string time = std::to_string(app.clock.getTime());
-			Serial.println(time.c_str());
+			const auto timenow = now();
+			char time_string[50];
+			sprintf(time_string, "%ld", timenow);
+			Serial.println(time_string);
+
 		});
 
 	addFunction(

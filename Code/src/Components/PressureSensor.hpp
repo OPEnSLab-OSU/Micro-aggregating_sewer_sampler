@@ -22,10 +22,15 @@ public:
 		: KPComponent(name, controller), sensor(PRESSURE_ADDR) {}
 
 	void setup() override {
-		if (sensor.initializeMS_5803()) {
-			Serial.println("OK: MS5803 pressure sensor online");
-		} else {
+		// Setup is backwards apparently
+		if(sensor.initializeMS_5803(false)){
 			Serial.println("ERR: MS5803 pressure sensor offline");
+		}
+		else{
+			Serial.println("OK: MS5803 pressure sensor online");
+
+			// Wait 3 seconds after initializing
+			delay(3000);
 		}
 	}
 
@@ -48,12 +53,20 @@ public:
 	bool isWithinPressure() {
 		float sum = 0;
 		int qty = 5;
+		int count = 0;
 		for (int i = 0; i < qty; ++i) {
 			float p_inst = getPressure();
-			sum += p_inst;
+			#ifdef PRESSURE_CHECK
+				print("Pressure instant mbar;;;;; ");
+				println(p_inst);
+			#endif
+			if (p_inst>0){
+				count = count +1;
+				sum += p_inst;
+			}
 		}
-		float p_avg = sum/qty;
-		print("Pressure mbar;;;;; ");
+		float p_avg = sum/count;
+		print("Pressure average mbar;;;;; ");
 		println(p_avg);
 		if (p_avg >= min_pressure && p_avg <= max_pressure) {
 			return true;

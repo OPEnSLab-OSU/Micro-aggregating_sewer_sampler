@@ -1,6 +1,5 @@
 #include <Procedures/SampleStates.hpp>
 #include <Application/Application.hpp>
-//#include <FileIO/SerialSD.hpp>
 #include <time.h>
 #include <sstream>
 #include <String>
@@ -9,13 +8,13 @@ bool pumpOff = 1;
 bool flushVOff = 1;
 bool sampleVOff = 1;
 bool pressureEnded = 0;
+unsigned long cycle_start_time;
+unsigned long cycle_end_time;
 unsigned long sample_start_time;
 unsigned long sample_end_time;
 short load_count = 0;
 float prior_load = 0;
 
-
-//SerialSD SSD;
 CSVWriter csvw{"data.csv"};
 
 void writeLatch(bool controlPin, ShiftRegister & shift) {
@@ -42,14 +41,6 @@ void SampleStateStop::enter(KPStateMachine & sm) {
 	sample_end_time = millis();
 	print("sample_end_time ms;;;");
 	println(sample_end_time);
-	const auto timenow = now();
-	std::stringstream ss;
-	ss << timenow;
-	std::string time_string = ss.str();
-	char cycle_string[50];
-	sprintf(cycle_string, "%u", (int)app.sm.current_cycle);
-	std::string strings[4] = {"Sample ", cycle_string, " Stop Time", time_string};
-	csvw.writeStrings(strings, 4);
 	pumpOff = 1;
 	println("Pump off");
 
@@ -58,11 +49,37 @@ void SampleStateStop::enter(KPStateMachine & sm) {
 	flushVOff = 1;
 	sampleVOff = 1;
 
-	setTimeCondition(time, [&]() { sm.next(); });
+	//get and print to SD pressure after pump and valves are off
+	current_pressure = app.pressure_sensor.getPressure();
+	print("End pressure: ");
+	println(current_pressure);
+	char press_string[50];
+	sprintf(press_string, "%d",current_pressure);
+	const auto timenow = now();
+	std::stringstream ss;
+	ss << timenow;
+	std::string time_string = ss.str();
+	char cycle_string[50];
+	sprintf(cycle_string, "%u", (int)app.sm.current_cycle);
+	std::string strings[5] = {time_string,",Ending pressure for cycle: ",cycle_string,",,, ", press_string};
+	csvw.writeStrings(strings, 5);
+
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 void SampleStateOnramp::enter(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
+	cycle_start_time = millis();
+	const auto timenow = now();
+	std::stringstream ss;
+	ss << timenow;
+	std::string time_string = ss.str();
+	print("Starting cycle number;");
+	println(app.sm.current_cycle);
+	char cycle_string[50];
+	sprintf(cycle_string, "%u", (int)app.sm.current_cycle);
+	std::string strings[3] = {time_string,",Starting cycle ", cycle_string};
+	csvw.writeStrings(strings, 3);
 
 	if (flushVOff){
 		app.shift.setAllRegistersLow();
@@ -73,7 +90,7 @@ void SampleStateOnramp::enter(KPStateMachine & sm) {
 		sampleVOff = 1;
 	}
 
-	setTimeCondition(time, [&]() { sm.next(); });
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 // Flush
@@ -82,7 +99,7 @@ void SampleStateFlush::enter(KPStateMachine & sm) {
 
 	if (flushVOff){
 		app.shift.setAllRegistersLow();
-		app.shift.setPin(TPICDevices::FLUSH_VALVE, HIGH);  // write in skinny
+		app.shift.setPin(TPICDevices::FLUSH_VALVE, HIGH); // write in skinny
 		app.shift.write();								   // write shifts wide*/
 		flushVOff = 0;
 		println("Flush valve turning on");
@@ -95,17 +112,13 @@ void SampleStateFlush::enter(KPStateMachine & sm) {
 		println("Pump on");
 	}
 
-	setTimeCondition(time, [&]() { sm.next(); });
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 // Sample
 void SampleStateSample::enter(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
-	//SSD.print("Input total sampling mass in g;;;");
-	//SSD.println(mass);
-	//SSD.print("Input total sampling time in ms;;;");
-	//SSD.println(time);
-
+	wt_offset = 0;
 	current_tare = app.sm.getState<SampleStateLoadBuffer>(SampleStateNames::LOAD_BUFFER).current_tare;
 
 	if (sampleVOff){
@@ -123,8 +136,8 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 	std::string time_string = ss.str();
 	char cycle_string[50];
 	sprintf(cycle_string, "%u", (int)app.sm.current_cycle);
-	std::string strings[4] = {"Sample ", cycle_string, " Start Time", time_string};
-	csvw.writeStrings(strings, 4);
+	std::string strings[3] = {time_string, ",Sample Start Cycle: ", cycle_string};
+	csvw.writeStrings(strings, 3);
 	sample_start_time = millis();
 	print("sample_start_time ms ;;;");
 	println(sample_start_time);
@@ -141,30 +154,52 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 		// check load, exit if matching mass
 		new_load = app.load_cell.getLoad(1);
 		new_time = millis();
-		print("New load reading;");
+		print("New mass reading;");
 		println(new_load);
 		print("New time;;;");
 		println(new_time);
-		//print("Current_tare in sample state;;;; ");
-		//println(current_tare);
-		//print("mass var in sample state;;;; ");
-		//println(mass);
-		load = new_load - current_tare >= (mass - 0.05*mass);
+		// compensate for poor measurements for first 4
+		if(load_count==4){
+			wt_offset = ((new_load - prior_load)/(new_time - prior_time))*(new_time - sample_start_time);
+			print("Weight offset;;;;");
+			println(wt_offset);
+		}
+		
+		const auto timenow = now();
+		std::stringstream ss;
+		ss << timenow;
+		std::string time_string = ss.str();
+		char cycle_string[50];
+		sprintf(cycle_string, "%u", (int)app.sm.current_cycle);
+		load = new_load - current_tare >= mass - wt_offset;
 		if (load){
-			//SSD.println("Sample state ended due to: load ");
-			std::string temp[1] = {"Sample state ended due to: load "};
-			csvw.writeStrings(temp, 1);
+			std::string temp[3] = {time_string,",Ended due to load cycle: ",cycle_string};
+			csvw.writeStrings(temp, 3);
 			println("Sample state ended due to: load ");
 			pressureEnded = 0;
 			return load;
 		}
-			//if not exiting due to load, check time and exit if over time
+
+			//if not exiting due to sample load, check overall load, time and exit if over time
 		else{
+			// check load reading relative to cap of 2900 g
+			bool total_load = 0;
+			total_load = new_load > 2900;
+			if (total_load){
+				std::string temp[4] = {time_string,",Ended due to total load cycle: ",cycle_string};
+				csvw.writeStrings(temp, 4);
+				println("Sample state ended due to: total load ");
+				pressureEnded = 0;
+				// trigger end of all sampling
+				app.sm.current_cycle = app.sm.last_cycle;
+				return total_load;
+			}
+			
 			bool t_max = timeSinceLastTransition() >= secsToMillis(time);
 			bool t_adj = timeSinceLastTransition() >= time_adj_ms;
 			if (t_max || t_adj){
-				std::string temp[1] = {"Sample state ended due to: time"};
-				csvw.writeStrings(temp, 1);
+				std::string temp[4] = {time_string,",Ended due to time cycle: ",cycle_string};
+				csvw.writeStrings(temp, 4);
 				println("Sample state ended due to: time");
 				pressureEnded = 0;
 				return t_max || t_adj;
@@ -173,8 +208,8 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 			else{
 				bool pressure = !app.pressure_sensor.isWithinPressure();
 				if (pressure){
-					std::string temp[1] = {"Sample state ended due to: pressure"};
-					csvw.writeStrings(temp, 1);
+					std::string temp[4] = {time_string, ",Ended due to pressure cycle: ",cycle_string};
+					csvw.writeStrings(temp, 4);
 					println("Sample state ended due to: pressure");
 					pressureEnded = 1;
 					return pressure;
@@ -182,28 +217,38 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 				//if not exiting due to load, time, and pressure, check pumping rate
 				else{
 					if (load_count > 0){
-						//print("prior_load in sample states;;;;");
-						//println(prior_load);
-						//print("prior_time in sample states;;;;");
-						//println(prior_time);
-						//new_rate = (new_load - prior_load) / ((new_time - prior_time));
-						//print("new_load - prior_load;;;");
-						//println(new_load - prior_load);
-						//print("(new_time - prior_time);;;");
-						//println((new_time - prior_time));
-						//print("New rate grams/ms;;;");
-						//println(new_rate);
-						//print("average rate: new_load - current_tare / new_time - sample_start_time;;;");
+						// check in to see if load increase is really slow meaning getting a lot of air or load not reading
+						// after first 25 samples, should be different from tare		
+						if (load_count== 25){
+									load_check += new_load;
+									load_check = load_check/(load_count) - current_tare;
+									print("Load rate check value: ");
+									println(load_check);
+									print("current tare: ");
+									println(current_tare);
+									load_check = 0;
+									load_rate = abs(load_check - current_tare) < 0.01;
+									if (load_rate){
+										std::string temp[4] = {time_string, ",Ended due to low load rate: ",cycle_string};
+										csvw.writeStrings(temp, 4);
+										println("Sample state ended due to: low load rate");
+										pressureEnded = 0;
+										return load_rate;
+									}
+								}
+						else if (load_count <25){
+							load_check += new_load;
+							print("Load check ");
+							print(load_check);
+							print(" for load count ");
+							println(load_count);
+							}
 						accum_load = new_load - current_tare;
-						//print("Accumulated load (g); ");
-						//println(accum_load);
 						accum_time = new_time - sample_start_time;
-						//print("Accumulated time (ms);;; ");
-						//println(accum_time);
 						avg_rate = 1000*(accum_load/accum_time);
-						print("Average rate in g/s;;;; ");
+						print("Average rate in g/s;;;;");
 						println(avg_rate,4);
-						//println(avg_rate,3);
+
 						//check to see if sampling time is appropriate
 						print("Coded time remaining in millis;;;");
 						code_time_est = time_adj_ms - timeSinceLastTransition();
@@ -223,16 +268,6 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 									print("Code time outside 10 percent of estimated time. Updated sampling time in millis;;;");
 									println(time_adj_ms);
 								}
-								// check in to see if pumping rate is really slow (half expected rate) meaning getting a lot of air
-								load_rate = abs(avg_rate) < 0.004;
-								/*if (load_rate){
-									//SSD.println("Sample state ended due to: load ");
-									std::string temp[1] = {"Sample state ended due to: low load rate"};
-									csvw.writeStrings(temp, 1);
-									println("Sample state ended due to: low load rate");
-									pressureEnded = 0;
-									return load_rate;
-								}*/
 							}
 						}
 					}
@@ -241,12 +276,12 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 					prior_rate = new_rate;
 					prior_time_est = new_time_est;
 					load_count += 1;
-					return load || t_max || t_adj || pressure;// || load_rate;
+					return load || total_load || t_max || t_adj || pressure || load_rate;
 					}
 				}
 			}
 	};
-	setCondition(condition, [&]() { sm.next(); });
+	setCondition(condition, [&]() { sm.next();});
 }
 
 // Sample leave
@@ -254,7 +289,6 @@ void SampleStateSample::leave(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
 	load_count = 0;
 	prior_load = 0;
-	app.sm.current_cycle += 1;
 }
 
 // Finished
@@ -268,7 +302,14 @@ void SampleStateFinished::enter(KPStateMachine & sm) {
 void SampleStateSetup::enter(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
 	app.led.setRun();
-	setTimeCondition(time, [&]() { sm.next(); });
+	//get and print time
+	const auto timenow = now();
+	std::stringstream ss;
+	ss << timenow;
+	std::string time_string = ss.str();
+	std::string strings[2] = {time_string, ",New Sampling Sequence"};
+	csvw.writeStrings(strings, 2);
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 void SampleStateBetweenPump::enter(KPStateMachine & sm) {
@@ -276,7 +317,7 @@ void SampleStateBetweenPump::enter(KPStateMachine & sm) {
 	app.pump.off();
 	pumpOff = 1;
 	println("Pump off");
-	setTimeCondition(time, [&]() { sm.next(); });
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 void SampleStateBetweenValve::enter(KPStateMachine & sm) {
@@ -290,7 +331,7 @@ void SampleStateBetweenValve::enter(KPStateMachine & sm) {
 		println("Sample valve turning on");
 		flushVOff = 1;
 	}
-	setTimeCondition(time, [&]() { sm.next(); });
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 void SampleStateFillTubeOnramp::enter(KPStateMachine & sm) {
@@ -298,13 +339,13 @@ void SampleStateFillTubeOnramp::enter(KPStateMachine & sm) {
 
 	if (flushVOff){
 		app.shift.setAllRegistersLow();
-		app.shift.setPin(TPICDevices::FLUSH_VALVE, HIGH);  // write in skinny
+		app.shift.setPin(TPICDevices::FLUSH_VALVE, HIGH);// write in skinny
 		app.shift.write();								   // write shifts wide*/
 		flushVOff = 0;
 		println("Flush valve turning on");
 		sampleVOff = 1;
 	}
-	setTimeCondition(time, [&]() { sm.next(); });
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 void SampleStateFillTube::enter(KPStateMachine & sm) {
@@ -312,7 +353,7 @@ void SampleStateFillTube::enter(KPStateMachine & sm) {
 
 	if (flushVOff){
 		app.shift.setAllRegistersLow();
-		app.shift.setPin(TPICDevices::FLUSH_VALVE, HIGH);  // write in skinny
+		app.shift.setPin(TPICDevices::FLUSH_VALVE, HIGH); // write in skinny
 		app.shift.write();								   // write shifts wide*/
 		flushVOff = 0;
 		println("Flush valve turning on");
@@ -324,7 +365,7 @@ void SampleStateFillTube::enter(KPStateMachine & sm) {
 		println("Pump on");
 	}
 
-	setTimeCondition(time, [&]() { sm.next(); });
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 void SampleStatePressureTare::enter(KPStateMachine & sm) {
@@ -346,7 +387,7 @@ void SampleStatePressureTare::enter(KPStateMachine & sm) {
 	sum	  = 0;
 	count = 0;
 
-	setTimeCondition(time, [&]() { sm.next(); });
+	setTimeCondition(time, [&]() { sm.next();});
 }
 
 void SampleStatePressureTare::update(KPStateMachine & sm) {
@@ -360,9 +401,13 @@ void SampleStatePressureTare::leave(KPStateMachine & sm) {
 #ifndef DISABLE_PRESSURE_TARE
 	int avg = sum / count;
 	char press_string[50];
-	sprintf(press_string, "%d.%02u", (int)avg, (int)((avg - (int)avg) * 100));
-	std::string strings[2] = {"Normal pressure set to value", press_string};
-	csvw.writeStrings(strings, 2);
+	sprintf(press_string, "%d", avg);
+	const auto timenow = now();
+	std::stringstream ss;
+	ss << timenow;
+	std::string time_string = ss.str();
+	std::string strings[3] = {time_string,",Pressure,,, ", press_string};
+	csvw.writeStrings(strings, 3);
 	print("Normal pressure set to value: ");
 	println(avg);
 
@@ -385,31 +430,29 @@ void SampleStatePressureTare::leave(KPStateMachine & sm) {
 
 void SampleStateLogBuffer::enter(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
-	print("Load at end of cycle ");//+ app.sm.current_cycle + ": " + (double)app.load_cell.getLoad());
+	print("Load at end of cycle;");
 	print(app.sm.current_cycle);
-	print("; ");
+	print(";");
 	final_load = app.load_cell.getLoad(25);
 	println(final_load,3);
 	//print to SD
 	char cycle_string[50];
 	sprintf(cycle_string, "%u", (int)app.sm.current_cycle);
-	char load_string[50];
-	sprintf(load_string, "%d.%02u", (int)final_load, (int)((final_load - (int)final_load) * 100));
-	std::string strings[3] = {"Load at end of cycle", cycle_string, load_string};
-	csvw.writeStrings(strings, 3);
 
 	//evaluate load and sampling time
 	current_tare = app.sm.getState<SampleStateLoadBuffer>(SampleStateNames::LOAD_BUFFER).current_tare;
 
-	//print("current_tare in log buffer;;;;");
-	//println(current_tare);
 	sampledLoad = final_load - current_tare;
 	print("sampledLoad: final_load - current_tare;");
 	println(sampledLoad);
-	//print("sample_start_time ms in log buffer;;;");
-	//println(sample_start_time);
-	//print("sample_end_time ms in log buffer;;;");
-	//println(sample_end_time);
+	char sampledload_string[50];
+	sprintf(sampledload_string, "%d.%02u", (int)sampledLoad, (int)((sampledLoad - (int)sampledLoad) * 100));
+	const auto timenow = now();
+	std::stringstream ss;
+	ss << timenow;
+	std::string time_string = ss.str();
+	std::string strings[5] = {time_string,",Sampled load at end of cycle ", cycle_string,",",sampledload_string};
+	csvw.writeStrings(strings, 5);
 	sampledTime = (sample_end_time - sample_start_time);
 	print("sampledTime period in ms;;");
 	println(sampledTime);
@@ -438,6 +481,8 @@ void SampleStateLogBuffer::enter(KPStateMachine & sm) {
 		//set new sample time
 		app.sm.getState<SampleStateSample>(SampleStateNames::SAMPLE).time_adj_ms = sampledTime;
 	}
+	//advance sample number
+	app.sm.current_cycle += 1;
 	sm.next();
 }
 
@@ -450,16 +495,14 @@ void SampleStateLoadBuffer::enter(KPStateMachine & sm) {
 	sprintf(cycle_string, "%u", (int)app.sm.current_cycle);
 	char tempC_string[50];
 	sprintf(tempC_string, "%d.%02u", (int)tempC, (int)((tempC - (int)tempC) * 100));
-	std::string strings[3] = {"Temperature for sample", cycle_string, tempC_string};
-	csvw.writeStrings(strings, 3);
-	//SSD.println("Get load");
-	//println(app.load_cell.getLoad(1));
-	print("Tare load; ");
+	const auto timenow = now();
+	std::stringstream ss;
+	ss << timenow;
+	std::string time_string = ss.str();
+	std::string strings[5] = {time_string,",Starting temperature for cycle ", cycle_string,",,", tempC_string};
+	csvw.writeStrings(strings, 5);
+	print("Tare load;");
 	current_tare = app.load_cell.reTare(25);
 	println(current_tare);
-	char tare_string[50];
-	sprintf(tare_string, "%d.%02u", (int)current_tare, (int)((current_tare - (int)current_tare) * 100));
-	std::string tare_strings[3] = {"Tare load for sample", cycle_string, tare_string};
-	csvw.writeStrings(tare_strings, 3);
 	sm.next();
 }

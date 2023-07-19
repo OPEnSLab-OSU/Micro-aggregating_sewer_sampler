@@ -17,9 +17,9 @@ public:
 	CSVWriter csvw{"data.csv"};
 	ADS1232 weight = ADS1232(_pdwn, _sclk, _dout);
 	float tare;
-	float factor = 0.002348;//0.002324227;
+	float factor = 0.002192;//0.002348 sampler1; 0.002192 sampler2
 
-	float offset = -19857.150;//-19691.0843;
+	float offset = -18344.85;// -19857.150 sampler1; -18344.85 sampler2
 	long reading = 0;
 	long sum;
 	short count;
@@ -32,15 +32,8 @@ public:
   		weight.OFFSET = 0;
   		weight.SCALE = 1.0;
 		tare = 0;
-		//get and print time
-		const auto timenow = now();
-		std::stringstream ss;
-		ss << timenow;
-		std::string time_string = ss.str();
-		std::string strings[2] = {"New Sampling Sequence: Start Time", time_string};
-		csvw.writeStrings(strings, 2);
 
-		print("Initial load; ");
+		print("Initial load;");
 		println(reTare(50));
 	}
 	long read(int qty) {
@@ -53,14 +46,14 @@ public:
 		for (int i = 0; i < qty; ++i) {
 			reading = weight.raw_read(1);
 			#ifdef LOAD_CAL
-				print("Load reading ");
+				print("Load reading;");
 				print(i);
-				print(";; ");
+				print(";");
 				println(reading);
 			#endif
 				if (qty>4){
 					//don't include first 5 readings in average due to unreliability
-					if (i>4){
+					if (i>3){
 						sum += reading;
 						count ++;
 						//print("tally of readings to average: ");
@@ -88,9 +81,9 @@ public:
 		float load = getLoad(qty);
 		char load_string[50];
 		sprintf(load_string, "%d.%02u", (int)load, (int)((load - (int)load) * 100));
-		std::string strings[2] = {"FLAGGED LOAD; ", load_string};
+		std::string strings[2] = {"FLAGGED LOAD, ", load_string};
 		csvw.writeStrings(strings, 2);
-		println("FLAGGED LOAD", load_string);
+		println("FLAGGED LOAD;", load_string);
 		return load;
 	}
 

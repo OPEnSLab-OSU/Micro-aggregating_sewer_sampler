@@ -22,7 +22,7 @@ namespace SampleStateNames {
 class SampleStateIdle : public KPState {
 public:
 	void enter(KPStateMachine & sm) override;
-	int time = DefaultTimes::IDLE_TIME;
+	int time = DefaultTimes::IDLE_TIME - 90;
 };
 
 class SampleStateFlush : public KPState {
@@ -52,12 +52,16 @@ public:
 	unsigned long new_time;
 	float prior_rate = 0;
 	float new_rate;
+	float wt_offset;
+	float previous_load_check = 0;
+	float load_check = 0;
 };
 
 class SampleStateStop : public KPState {
 public:
 	void enter(KPStateMachine & sm) override;
-	int time = 60;
+	int time = 45;
+	int current_pressure;
 };
 
 class SampleStateFinished : public KPState {
@@ -82,19 +86,19 @@ public:
 class SampleStateBetweenPump : public KPState {
 public:
 	void enter(KPStateMachine & sm) override;
-	int time = 3;
+	int time = 6;
 };
 
 class SampleStateBetweenValve : public KPState {
 public:
 	void enter(KPStateMachine & sm) override;
-	int time = 6;
+	int time = 7;
 };
 
 class SampleStateFillTubeOnramp : public KPState {
 public:
 	void enter(KPStateMachine & sm) override;
-	int time = 5;
+	int time = 7;
 };
 
 class SampleStateFillTube : public KPState {
@@ -125,6 +129,7 @@ public:
 	int sampledTime;
 	float average_pump_rate;
 	float load_diff;
+	float intervalTime;
 };
 
 class SampleStateLoadBuffer : public KPState {
