@@ -52,7 +52,8 @@ public:
 	unsigned long new_time;
 	float prior_rate = 0;
 	float new_rate;
-	float wt_offset;
+	float wt_offset = 0;
+	int wt_offset_load_count = -1; //4 for s2; skip for s1
 	float previous_load_check = 0;
 	float load_check = 0;
 };

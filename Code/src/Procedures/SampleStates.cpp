@@ -118,7 +118,6 @@ void SampleStateFlush::enter(KPStateMachine & sm) {
 // Sample
 void SampleStateSample::enter(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
-	wt_offset = 0;
 	current_tare = app.sm.getState<SampleStateLoadBuffer>(SampleStateNames::LOAD_BUFFER).current_tare;
 
 	if (sampleVOff){
@@ -158,8 +157,8 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 		println(new_load);
 		print("New time;;;");
 		println(new_time);
-		// compensate for poor measurements for first 4
-		if(load_count==4){
+		// compensate for poor measurements for first 4 (s2) or first 5(sampler1)
+		if(load_count==wt_offset_load_count){
 			wt_offset = ((new_load - prior_load)/(new_time - prior_time))*(new_time - sample_start_time);
 			print("Weight offset;;;;");
 			println(wt_offset);
