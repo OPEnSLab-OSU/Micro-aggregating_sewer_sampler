@@ -35,12 +35,20 @@ class SampleStateSample : public KPState {
 public:
 	void enter(KPStateMachine & sm) override;
 	void leave(KPStateMachine & sm) override;
-	bool badPressure();
+	int mass = 100;
 	int time   = DefaultTimes::SAMPLE_TIME;
 	int time_adj_ms = secsToMillis(time);
-	int mass = 100;
+	unsigned long sample_start_time;
+	unsigned long prior_time;
+	unsigned long new_time;
+	bool t_max;
+	bool t_adj;
+	bool pressure;
+	bool load = 0;
+	bool load_rate = 0;
+	bool total_load = 0;
+	bool pressureEnded = 0;
 	double avg_rate = 0;
-	float current_tare;
 	float accum_load;
 	int accum_time;
 	float weight_remaining;
@@ -48,11 +56,11 @@ public:
 	float prior_time_est;
 	float code_time_est;
 	float new_load = 0;
-	unsigned long prior_time;
-	unsigned long new_time;
 	float prior_rate = 0;
+	float prior_load = 0;
 	float new_rate;
 	float wt_offset = 0;
+	int load_count = 0;
 	int wt_offset_load_count = -1; //4 for s2; skip for s1
 	float previous_load_check = 0;
 	float load_check = 0;
@@ -63,6 +71,7 @@ public:
 	void enter(KPStateMachine & sm) override;
 	int time = 45;
 	int current_pressure;
+	unsigned long sample_end_time;
 };
 
 class SampleStateFinished : public KPState {
@@ -124,7 +133,6 @@ class SampleStateLogBuffer : public KPState {
 public:
 	void enter(KPStateMachine & sm) override;
 	float final_load;
-	float current_tare;
 	float sampledLoad;
 	int mass;
 	int sampledTime;

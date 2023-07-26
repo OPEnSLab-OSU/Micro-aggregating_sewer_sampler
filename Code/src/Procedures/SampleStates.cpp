@@ -7,13 +7,6 @@
 bool pumpOff = 1;
 bool flushVOff = 1;
 bool sampleVOff = 1;
-bool pressureEnded = 0;
-unsigned long cycle_start_time;
-unsigned long cycle_end_time;
-unsigned long sample_start_time;
-unsigned long sample_end_time;
-short load_count = 0;
-float prior_load = 0;
 
 CSVWriter csvw{"data.csv"};
 
@@ -69,7 +62,6 @@ void SampleStateStop::enter(KPStateMachine & sm) {
 
 void SampleStateOnramp::enter(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
-	cycle_start_time = millis();
 	const auto timenow = now();
 	std::stringstream ss;
 	ss << timenow;
@@ -118,7 +110,7 @@ void SampleStateFlush::enter(KPStateMachine & sm) {
 // Sample
 void SampleStateSample::enter(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
-	current_tare = app.sm.getState<SampleStateLoadBuffer>(SampleStateNames::LOAD_BUFFER).current_tare;
+	float current_tare = app.sm.getState<SampleStateLoadBuffer>(SampleStateNames::LOAD_BUFFER).current_tare;
 
 	if (sampleVOff){
 		app.shift.setAllRegistersLow();
@@ -148,8 +140,8 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 	}
 
 	auto const condition = [&]() {
-		bool load = 0;
-		bool load_rate = 0;
+		load = 0;
+		load_rate = 0;
 		// check load, exit if matching mass
 		new_load = app.load_cell.getLoad(1);
 		new_time = millis();
@@ -182,7 +174,7 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 			//if not exiting due to sample load, check overall load, time and exit if over time
 		else{
 			// check load reading relative to cap of 2900 g
-			bool total_load = 0;
+			total_load = 0;
 			total_load = new_load > 2900;
 			if (total_load){
 				std::string temp[4] = {time_string,",Ended due to total load cycle: ",cycle_string};
@@ -194,8 +186,8 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 				return total_load;
 			}
 			
-			bool t_max = timeSinceLastTransition() >= secsToMillis(time);
-			bool t_adj = timeSinceLastTransition() >= time_adj_ms;
+			t_max = timeSinceLastTransition() >= secsToMillis(time);
+			t_adj = timeSinceLastTransition() >= time_adj_ms;
 			if (t_max || t_adj){
 				std::string temp[4] = {time_string,",Ended due to time cycle: ",cycle_string};
 				csvw.writeStrings(temp, 4);
@@ -205,7 +197,7 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 			}
 			//if not exiting due to load and time, check pressure
 			else{
-				bool pressure = !app.pressure_sensor.isWithinPressure();
+				pressure = !app.pressure_sensor.isWithinPressure();
 				if (pressure){
 					std::string temp[4] = {time_string, ",Ended due to pressure cycle: ",cycle_string};
 					csvw.writeStrings(temp, 4);
@@ -286,8 +278,6 @@ void SampleStateSample::enter(KPStateMachine & sm) {
 // Sample leave
 void SampleStateSample::leave(KPStateMachine & sm) {
 	Application & app = *static_cast<Application *>(sm.controller);
-	load_count = 0;
-	prior_load = 0;
 }
 
 // Finished
@@ -439,7 +429,7 @@ void SampleStateLogBuffer::enter(KPStateMachine & sm) {
 	sprintf(cycle_string, "%u", (int)app.sm.current_cycle);
 
 	//evaluate load and sampling time
-	current_tare = app.sm.getState<SampleStateLoadBuffer>(SampleStateNames::LOAD_BUFFER).current_tare;
+	float current_tare = app.sm.getState<SampleStateLoadBuffer>(SampleStateNames::LOAD_BUFFER).current_tare;
 
 	sampledLoad = final_load - current_tare;
 	print("sampledLoad: final_load - current_tare;");
@@ -452,7 +442,7 @@ void SampleStateLogBuffer::enter(KPStateMachine & sm) {
 	std::string time_string = ss.str();
 	std::string strings[5] = {time_string,",Sampled load at end of cycle ", cycle_string,",",sampledload_string};
 	csvw.writeStrings(strings, 5);
-	sampledTime = (sample_end_time - sample_start_time);
+	sampledTime = (app.sm.getState<SampleStateStop>(SampleStateNames::STOP).sample_end_time - app.sm.getState<SampleStateSample>(SampleStateNames::SAMPLE).sample_start_time);
 	print("sampledTime period in ms;;");
 	println(sampledTime);
 	//calculate average pumping rate
@@ -466,7 +456,7 @@ void SampleStateLogBuffer::enter(KPStateMachine & sm) {
 	println(load_diff);
 
 	//update time if sample didn't end due to pressure
-	if (!pressureEnded){	
+	if (!app.sm.getState<SampleStateSample>(SampleStateNames::SAMPLE).pressureEnded){	
 		// change sampling time if load was +- 5% off from set weight
 		if (abs(mass - sampledLoad)/mass > 0.05){
 			println("Sample mass outside of 5 percent tolerance");
