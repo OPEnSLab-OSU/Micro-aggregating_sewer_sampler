@@ -15,7 +15,7 @@ public:
 	Clock(const char * name) : KPComponent(name), rtc(false) {}
 	void setup() {
 		rtc.begin();
-		rtc.squareWave(SQWAVE_NONE);
+		rtc.squareWave(DS3232RTC::SQWAVE_NONE);
 		setTime(rtc.get());
 	}
 	void set(unsigned long long seconds) {

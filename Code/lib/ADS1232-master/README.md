@@ -1,5 +1,6 @@
 # ADS1232/ADS1234
 ADS1232/ADS1234 Arduino Library
+[Github](https://github.com/ciorceri/ADS1232)
 
 Here is an Arduino Library for ADS1232/ADS1234.
 
