@@ -1,24 +1,41 @@
 {
     "creators": [
         {
-            "affiliation": "OPEnS Lab - OSU",
+            "affiliation": "Department of Soil and Water Resource, College of Agriculture, Al-Qasim Green University",
             "name": "Abdulameer Jasim Al-Agele, Hadi"
         },
-        {
-            "affiliation": "OPEnS Lab - OSU",
-            "name": "Ngueyn, Bao"
+		{
+            "affiliation": "Openly Published Environmental Sensing (OPEnS) Lab, Department of Biological & Ecological Engineering, Oregon State University",
+            "name": "Walter, Cara",
+			"orcid": "0000-0001-5934-5482"
         },
         {
-            "affiliation": "OPEnS Lab - OSU",
+            "affiliation": "Openly Published Environmental Sensing (OPEnS) Lab, Department of Biological & Ecological Engineering, Oregon State University",
+            "name": "Nguyen, Bao",
+			"orcid": "0000-0002-5692-3176"
+        },
+        {
+            "affiliation": "Openly Published Environmental Sensing (OPEnS) Lab, Department of Biological & Ecological Engineering, Oregon State University",
             "name": "Singh, Gurpreet"
         },
         {
-            "affiliation": "OPEnS Lab - OSU",
+            "affiliation": "Openly Published Environmental Sensing (OPEnS) Lab, Department of Biological & Ecological Engineering, Oregon State University",
             "name": "Zimmermann, Liam"
+        },
+		{
+            "affiliation": "Openly Published Environmental Sensing (OPEnS) Lab, Department of Biological & Ecological Engineering, Oregon State University",
+            "name": "Udell, Chet",
+			"orcid": "0000-0001-5815-8319"
+        },
+		{
+            "affiliation": "Openly Published Environmental Sensing (OPEnS) Lab, Department of Biological & Ecological Engineering, Oregon State University",
+            "name": "Selker, John",
+			"orcid": "0000-0001-9751-6094"
         }
+		
 
     ],
-    "description": "Micro-aggregating autosmapler",
+    "description": "Micro-aggregating sewer sampler",
     "keywords": [
         "Auto-sampler"
         "composite-sampler"
@@ -29,5 +46,5 @@
     "license": {
         "id": "gpl-3.0"
     },
-    "title": "Micro-aggregating autosmapler"
+    "title": "Micro-aggregating sewer sampler"
 }
