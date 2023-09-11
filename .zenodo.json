@@ -37,10 +37,10 @@
     ],
     "description": "Micro-aggregating sewer sampler",
     "keywords": [
-        "Auto-sampler"
-        "composite-sampler"
-        "epidemiology"
-        "low-cost design"
+        "Auto-sampler",
+        "composite-sampler",
+        "epidemiology",
+        "low-cost design",
 		"wastewater"
     ],
     "license": {
